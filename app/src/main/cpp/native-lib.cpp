@@ -6,6 +6,43 @@
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_WARN,"yuvOpenGlDemo",__VA_ARGS__)
 
+//顶点着色器
+#define GET_STR(x) #x
+static const char *vertextShader = GET_STR(
+        attribute vec4 aPosition;//输入的顶点坐标
+        attribute vec2 aTextCoord;//输入的纹理坐标
+        varying vec2 vTextCoord;//输出的纹理坐标
+        void main() {
+            //这里其实是将上下翻转过来（因为安卓图片会自动上下翻转，所以转回来）
+            aTextCoord = vec2(aTextCoord.x, 1.0 - aTextCoord.y);
+            gl_Position = aPosition;
+        }
+);
+
+static const char *fragYUV420P = GET_STR(
+        precision mediump float;
+        varying vec2 vTextCoord;
+        //输入的yuv三个纹理
+        uniform sample2D yTexture;
+        uniform sample2D uTexture;
+        uniform sample2D vTexture;
+        void main(){
+            vec3 yuv;
+            vec3 rgb;
+            //分别取yuv各个分量的采样纹理（r表示？）
+            yuv.r =texture2D(yTexture,vTextCoord).r;
+            yuv.g =texture2D(uTexture,vTextCoord).r - 0.5;
+            yuv.b =texture2D(vTexture,vTextCoord).r - 0.5;
+            rgb = mat3(
+                    1.0,1.0,1.0
+                    0.0,-0.39465,2.03211
+                    1.13983,-0.5806,0.0
+                    )*yuv;
+            gl_FragColor = vec4(rgb,1.0);
+        }
+);
+
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_example_yuvopengldemo_MainActivity_stringFromJNI(
         JNIEnv *env,
