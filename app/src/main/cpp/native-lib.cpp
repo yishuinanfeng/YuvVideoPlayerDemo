@@ -3,45 +3,56 @@
 #include <android/log.h>
 #include <android/native_window_jni.h>
 #include <EGL/egl.h>
+#include <GLES2/gl2.h>
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_WARN,"yuvOpenGlDemo",__VA_ARGS__)
 
 //顶点着色器
 #define GET_STR(x) #x
-static const char *vertextShader = GET_STR(
-        attribute vec4 aPosition;//输入的顶点坐标
-        attribute vec2 aTextCoord;//输入的纹理坐标
-        varying vec2 vTextCoord;//输出的纹理坐标
+static const char *vertexShader = GET_STR(
+        attribute
+        vec4 aPosition;//输入的顶点坐标
+        attribute
+        vec2 aTextCoord;//输入的纹理坐标
+        varying
+        vec2 vTextCoord;//输出的纹理坐标
         void main() {
             //这里其实是将上下翻转过来（因为安卓图片会自动上下翻转，所以转回来）
-            aTextCoord = vec2(aTextCoord.x, 1.0 - aTextCoord.y);
+            vTextCoord = vec2(aTextCoord.x, 1.0 - aTextCoord.y);
             gl_Position = aPosition;
         }
 );
 
 static const char *fragYUV420P = GET_STR(
-        precision mediump float;
-        varying vec2 vTextCoord;
+        precision
+        mediump float;
+        varying
+        vec2 vTextCoord;
         //输入的yuv三个纹理
-        uniform sample2D yTexture;
-        uniform sample2D uTexture;
-        uniform sample2D vTexture;
-        void main(){
+        uniform
+        sampler2D yTexture;
+        uniform
+        sampler2D uTexture;
+        uniform
+        sampler2D vTexture;
+        void main() {
             vec3 yuv;
             vec3 rgb;
             //分别取yuv各个分量的采样纹理（r表示？）
-            yuv.r =texture2D(yTexture,vTextCoord).r;
-            yuv.g =texture2D(uTexture,vTextCoord).r - 0.5;
-            yuv.b =texture2D(vTexture,vTextCoord).r - 0.5;
+            yuv.r = texture2D(yTexture, vTextCoord).r;
+            yuv.g = texture2D(uTexture, vTextCoord).r - 0.5;
+            yuv.b = texture2D(vTexture, vTextCoord).r - 0.5;
             rgb = mat3(
-                    1.0,1.0,1.0
-                    0.0,-0.39465,2.03211
-                    1.13983,-0.5806,0.0
-                    )*yuv;
-            gl_FragColor = vec4(rgb,1.0);
+                    1.0, 1.0, 1.0,
+                    0.0, -0.39465, 2.03211,
+                    1.13983, -0.5806, 0.0
+            ) * yuv;
+            gl_FragColor = vec4(rgb, 1.0);
         }
 );
 
+
+GLint initShader(const char *source, int type);
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_example_yuvopengldemo_MainActivity_stringFromJNI(
@@ -50,6 +61,35 @@ Java_com_example_yuvopengldemo_MainActivity_stringFromJNI(
     std::string hello = "Hello from C++";
     return env->NewStringUTF(hello.c_str());
 }
+
+GLint initShader(const char *source, GLint type) {
+    //创建shader
+    GLint sh = glCreateShader(type);
+    if (sh == 0) {
+        LOGD("glCreateShader %d failed", type);
+        return 0;
+    }
+    //加载shader
+    glShaderSource(sh,
+                   1,//shader数量
+                   &source,
+                   0);//代码长度，传0则读到字符串结尾
+
+    //编译shader
+    glCompileShader(sh);
+
+    GLint status;
+    glGetShaderiv(sh, GL_COMPILE_STATUS, &status);
+    if (status == 0) {
+        LOGD("glCompileShader %d failed", type);
+        LOGD("source %s", source);
+        return 0;
+    }
+
+    LOGD("glCompileShader %d success", type);
+    return sh;
+}
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstring jUrl,
@@ -110,6 +150,56 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
         LOGD("eglMakeCurrent failed");
         return;
     }
+
+    GLint vsh = initShader(vertexShader, GL_VERTEX_SHADER);
+    GLint fsh = initShader(fragYUV420P, GL_FRAGMENT_SHADER);
+
+    //创建渲染程序
+    GLint program = glCreateProgram();
+    if (program == 0) {
+        LOGD("glCreateProgram failed");
+        return;
+    }
+
+    //向渲染程序中加入着色器
+    glAttachShader(program, vsh);
+    glAttachShader(program, fsh);
+
+    //链接程序
+    glLinkProgram(program);
+    GLint status = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if (status == 0) {
+        LOGD("glLinkProgram failed");
+        return;
+    }
+    LOGD("glLinkProgram success");
+    //激活渲染程序
+    glUseProgram(program);
+
+    //加入三维顶点数据
+    static float ver[] = {
+            1.0f, -1.0f, 0.0f,
+            -1.0f, -1.0f, 0.0f,
+            1.0f, 1.0f, 0.0f,
+            -1.0f, 1.0f, 0.0f
+    };
+
+    GLuint apos = static_cast<GLuint>(glGetAttribLocation(program, "aPosition"));
+    glEnableVertexAttribArray(apos);
+    glVertexAttribPointer(apos, 3, GL_FLOAT, GL_FALSE, 12, ver);
+
+
+    //加入纹理坐标数据
+    static float fragment[] = {
+            1.0f, 0.0f,
+            0.0f, 0.0f,
+            1.0f, 1.0f,
+            0.0f, 1.0f
+    };
+    GLuint aTex = static_cast<GLuint>(glGetAttribLocation(program, "aTextCoord"));
+    glEnableVertexAttribArray(aTex);
+    glVertexAttribPointer(aTex, 2, GL_FLOAT, GL_FALSE, 8, fragment);
 
 
 }
