@@ -4,6 +4,7 @@
 #include <android/native_window_jni.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+#include <string.h>
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_WARN,"yuvOpenGlDemo",__VA_ARGS__)
 
@@ -189,7 +190,6 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
     glEnableVertexAttribArray(apos);
     glVertexAttribPointer(apos, 3, GL_FLOAT, GL_FALSE, 12, ver);
 
-
     //加入纹理坐标数据
     static float fragment[] = {
             1.0f, 0.0f,
@@ -201,5 +201,110 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
     glEnableVertexAttribArray(aTex);
     glVertexAttribPointer(aTex, 2, GL_FLOAT, GL_FALSE, 8, fragment);
 
+    int width = 424;
+    int height = 240;
+
+    //纹理初始化
+    //设置纹理层
+    glUniform1i(glGetUniformLocation(program, "yTexture"), 0);
+    glUniform1i(glGetUniformLocation(program, "uTexture"), 1);
+    glUniform1i(glGetUniformLocation(program, "vTexture"), 2);
+    //纹理ID
+    GLuint texts[3] = {0};
+    //创建纹理，得到纹理ID
+    glGenTextures(3, texts);
+
+    //绑定纹理
+    glBindTexture(GL_TEXTURE_2D, texts[0]);
+    //缩小的过滤器
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //设置纹理的格式和大小
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,//细节基本 默认0
+                 GL_LUMINANCE,//gpu内部格式 亮度，灰度图（这里就是只取一个颜色通道的意思）
+                 width,
+                 height,
+                 0,//边框
+                 GL_LUMINANCE,//数据的像素格式 亮度，灰度图
+                 GL_UNSIGNED_BYTE,//像素点存储的数据类型
+                 NULL //纹理的数据（先不传）
+    );
+
+    //绑定纹理
+    glBindTexture(GL_TEXTURE_2D, texts[1]);
+    //缩小的过滤器
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //设置纹理的格式和大小
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,//细节基本 默认0
+                 GL_LUMINANCE,//gpu内部格式 亮度，灰度图（这里就是只取一个颜色通道的意思）
+                 width / 2,//u数据数量为屏幕的4分之1
+                 height / 2,
+                 0,//边框
+                 GL_LUMINANCE,//数据的像素格式 亮度，灰度图
+                 GL_UNSIGNED_BYTE,//像素点存储的数据类型
+                 NULL //纹理的数据（先不传）
+    );
+
+    //绑定纹理
+    glBindTexture(GL_TEXTURE_2D, texts[2]);
+    //缩小的过滤器
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //设置纹理的格式和大小
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,//细节基本 默认0
+                 GL_LUMINANCE,//gpu内部格式 亮度，灰度图（这里就是只取一个颜色通道的意思）
+                 width / 2,
+                 height / 2,//v数据数量为屏幕的4分之1
+                 0,//边框
+                 GL_LUMINANCE,//数据的像素格式 亮度，灰度图
+                 GL_UNSIGNED_BYTE,//像素点存储的数据类型
+                 NULL //纹理的数据（先不传）
+    );
+
+    unsigned char *buf[3] = {0};
+    buf[0] = new unsigned char[width * height];//y
+    buf[1] = new unsigned char[width * height / 4];//u
+    buf[2] = new unsigned char[width * height / 4];//v
+
+    for (int i = 0; i < 10000; ++i) {
+
+        memset(buf[0], i, width * height);
+        memset(buf[1], i, width * height/4);
+        memset(buf[2], i, width * height/4);
+
+        //激活第一层纹理，绑定到创建的纹理
+        glActiveTexture(GL_TEXTURE0);
+        //绑定纹理
+        glBindTexture(GL_TEXTURE_2D, texts[0]);
+        //替换纹理内容
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_LUMINANCE, GL_UNSIGNED_BYTE,
+                        buf[0]);
+
+        //激活第二层纹理，绑定到创建的纹理
+        glActiveTexture(GL_TEXTURE1);
+        //绑定纹理
+        glBindTexture(GL_TEXTURE_2D, texts[1]);
+        //替换纹理内容
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width / 2, height / 2, GL_LUMINANCE,
+                        GL_UNSIGNED_BYTE,
+                        buf[1]);
+
+        //激活第三层纹理，绑定到创建的纹理
+        glActiveTexture(GL_TEXTURE2);
+        //绑定纹理
+        glBindTexture(GL_TEXTURE_2D, texts[2]);
+        //替换纹理内容
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width / 2, height / 2, GL_LUMINANCE,
+                        GL_UNSIGNED_BYTE,
+                        buf[2]);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        //窗口显示
+        eglSwapBuffers(display,winSurface);
+    }
 
 }
