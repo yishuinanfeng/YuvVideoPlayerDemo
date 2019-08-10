@@ -16,31 +16,39 @@ static const char *vertexShader = GET_STR(
         attribute
         vec2 aTextCoord;//输入的纹理坐标
         varying
-        vec2 vTexCoord;//输出的纹理坐标
+        vec2 vTextCoord;//输出的纹理坐标
         void main() {
             //这里其实是将上下翻转过来（因为安卓图片会自动上下翻转，所以转回来）
-            vTexCoord = vec2(aTextCoord.x, 1.0 - aTextCoord.y);
+            vTextCoord = vec2(aTextCoord.x, 1.0 - aTextCoord.y);
             gl_Position = aPosition;
         }
 );
 
 static const char *fragYUV420P = GET_STR(
-        precision mediump float;    //精度
-        varying vec2 vTexCoord;     //顶点着色器传递的坐标
-        uniform sampler2D yTexture; //输入的材质（不透明灰度，单像素）
-        uniform sampler2D uTexture;
-        uniform sampler2D vTexture;
-        void main(){
+        precision
+        mediump float;
+        varying
+        vec2 vTextCoord;
+        //输入的yuv三个纹理
+        uniform
+        sampler2D yTexture;
+        uniform
+        sampler2D uTexture;
+        uniform
+        sampler2D vTexture;
+        void main() {
             vec3 yuv;
             vec3 rgb;
-            yuv.r = texture2D(yTexture,vTexCoord).r;
-            yuv.g = texture2D(uTexture,vTexCoord).r - 0.5;
-            yuv.b = texture2D(vTexture,vTexCoord).r - 0.5;
-            rgb = mat3(1.0,     1.0,    1.0,
-                       0.0,-0.39465,2.03211,
-                       1.13983,-0.58060,0.0)*yuv;
-            //输出像素颜色
-            gl_FragColor = vec4(rgb,1.0);
+            //分别取yuv各个分量的采样纹理（r表示？）
+            yuv.r = texture2D(yTexture, vTextCoord).r;
+            yuv.g = texture2D(uTexture, vTextCoord).r - 0.5;
+            yuv.b = texture2D(vTexture, vTextCoord).r - 0.5;
+            rgb = mat3(
+                    1.0, 1.0, 1.0,
+                    0.0, -0.39465, 2.03211,
+                    1.13983, -0.5806, 0.0
+            ) * yuv;
+            gl_FragColor = vec4(rgb, 1.0);
         }
 );
 
@@ -194,12 +202,12 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
             1.0f, 1.0f,
             0.0f, 1.0f
     };
-    GLuint aTex = static_cast<GLuint>(glGetAttribLocation(program, "vTexCoord"));
+    GLuint aTex = static_cast<GLuint>(glGetAttribLocation(program, "aTextCoord"));
     glEnableVertexAttribArray(aTex);
     glVertexAttribPointer(aTex, 2, GL_FLOAT, GL_FALSE, 8, fragment);
 
-    int width = 424;
-    int height = 240;
+    int width = 640;
+    int height = 360;
 
     //纹理初始化
     //设置纹理层
