@@ -7,7 +7,7 @@ import android.view.SurfaceHolder;
 
 public class YuvPlayer extends GLSurfaceView implements Runnable, SurfaceHolder.Callback {
 
-    private final static String PATH = "";
+    private final static String PATH = "/sdcard/out.yuv";
 
     public YuvPlayer(Context context, AttributeSet attrs) {
         super(context, attrs);
