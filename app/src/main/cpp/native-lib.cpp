@@ -225,6 +225,7 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     //设置纹理的格式和大小
+    //width,height表示每几个像素公用一个yuv元素？比如width / 2表示横向每两个像素使用一个元素？
     glTexImage2D(GL_TEXTURE_2D,
                  0,//细节基本 默认0
                  GL_LUMINANCE,//gpu内部格式 亮度，灰度图（这里就是只取一个颜色通道的意思）
@@ -288,6 +289,7 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
         }
 
         //激活第一层纹理，绑定到创建的纹理
+        //下面的width,height主要是显示尺寸？
         glActiveTexture(GL_TEXTURE0);
         //绑定纹理
         glBindTexture(GL_TEXTURE_2D, texts[0]);
