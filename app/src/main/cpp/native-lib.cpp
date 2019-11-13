@@ -213,7 +213,7 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
     glVertexAttribPointer(aTex, 2, GL_FLOAT, GL_FALSE, 8, fragment);
 
     int width = 640;
-    int height = 360;
+    int height = 272;
 
     //纹理初始化
     //设置纹理层对应的对应采样器？

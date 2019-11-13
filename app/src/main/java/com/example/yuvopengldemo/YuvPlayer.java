@@ -10,7 +10,8 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class YuvPlayer extends GLSurfaceView implements Runnable, SurfaceHolder.Callback, GLSurfaceView.Renderer {
 
-    private final static String PATH = "/sdcard/sintel_640_360.yuv";
+   // private final static String PATH = "/sdcard/sintel_640_360.yuv";
+    private final static String PATH = "/sdcard/video1_640_272.yuv";
 
     public YuvPlayer(Context context, AttributeSet attrs) {
         super(context, attrs);
