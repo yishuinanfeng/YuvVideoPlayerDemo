@@ -42,9 +42,9 @@ static const char *fragYUV420P = GET_STR(
             vec3 rgb;
             //分别取yuv各个分量的采样纹理（r表示？）
             //
-            yuv.r = texture2D(yTexture, vTextCoord).g;
-            yuv.g = texture2D(uTexture, vTextCoord).g - 0.5;
-            yuv.b = texture2D(vTexture, vTextCoord).g - 0.5;
+            yuv.x = texture2D(yTexture, vTextCoord).g;
+            yuv.y = texture2D(uTexture, vTextCoord).g - 0.5;
+            yuv.z = texture2D(vTexture, vTextCoord).g - 0.5;
             rgb = mat3(
                     1.0, 1.0, 1.0,
                     0.0, -0.39465, 2.03211,
@@ -199,7 +199,7 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
 
     GLuint apos = static_cast<GLuint>(glGetAttribLocation(program, "aPosition"));
     glEnableVertexAttribArray(apos);
-    glVertexAttribPointer(apos, 3, GL_FLOAT, GL_FALSE, 12, ver);
+    glVertexAttribPointer(apos, 3, GL_FLOAT, GL_FALSE, 0, ver);
 
     //加入纹理坐标数据
     static float fragment[] = {
@@ -210,7 +210,7 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
     };
     GLuint aTex = static_cast<GLuint>(glGetAttribLocation(program, "aTextCoord"));
     glEnableVertexAttribArray(aTex);
-    glVertexAttribPointer(aTex, 2, GL_FLOAT, GL_FALSE, 8, fragment);
+    glVertexAttribPointer(aTex, 2, GL_FLOAT, GL_FALSE, 0, fragment);
 
     int width = 640;
     int height = 272;
@@ -252,7 +252,7 @@ Java_com_example_yuvopengldemo_YuvPlayer_loadYuv(JNIEnv *env, jobject thiz, jstr
     glTexImage2D(GL_TEXTURE_2D,
                  0,//细节基本 默认0
                  GL_LUMINANCE,//gpu内部格式 亮度，灰度图（这里就是只取一个亮度的颜色通道的意思）
-                 width,//加载的纹理宽度。最好为2的次幂
+                 width,//加载的纹理宽度。最好为2的次幂(这里对y分量数据当做指定尺寸算，但显示尺寸会拉伸到全屏？)
                  height,//加载的纹理高度。最好为2的次幂
                  0,//纹理边框
                  GL_LUMINANCE,//数据的像素格式 亮度，灰度图
